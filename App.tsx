@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { User, UserRole, Station, DailyEntry, Alert } from './types';
+import React, { useState, useEffect } from 'react';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { User, Station, DailyEntry, Alert, StockPurchase } from './types';
 import { INITIAL_USERS, INITIAL_STATIONS } from './constants';
 import { SEED_ENTRIES, SEED_ALERTS } from './mockData';
 import Layout from './components/Layout';
@@ -58,10 +58,33 @@ const App: React.FC = () => {
 
   const updateEntry = (updated: DailyEntry) => {
     setEntries(prev => prev.map(e => e.id === updated.id ? updated : e));
+    
+    // If approved, subtract from station stock
+    if (updated.status === 'APPROVED') {
+       setStations(prev => prev.map(s => 
+         s.id === updated.stationId 
+           ? { ...s, currentStock: Math.max(0, s.currentStock - updated.quantitySold) }
+           : s
+       ));
+    }
   };
 
   const addEntry = (newEntry: DailyEntry) => {
     setEntries(prev => [newEntry, ...prev]);
+  };
+
+  const procureStock = (purchase: StockPurchase) => {
+    setStations(prev => prev.map(s => 
+      s.id === purchase.stationId 
+        ? { ...s, currentStock: Math.min(s.capacity, s.currentStock + purchase.quantity) }
+        : s
+    ));
+    
+    // Add an audit log entry could be done here if we had a global audit trail
+  };
+
+  const resolveAlert = (alertId: string) => {
+    setAlerts(prev => prev.map(a => a.id === alertId ? { ...a, resolved: true } : a));
   };
 
   if (!user) {
@@ -72,10 +95,34 @@ const App: React.FC = () => {
     <HashRouter>
       <Layout user={user} alerts={alerts} onLogout={handleLogout}>
         <Routes>
-          <Route path="/" element={<Dashboard user={user} entries={entries} stations={stations} alerts={alerts} />} />
-          <Route path="/entry" element={<DailyEntryPage user={user} stations={stations} onAddEntry={addEntry} existingEntries={entries} />} />
-          <Route path="/approvals" element={<Approvals user={user} entries={entries} onUpdateEntry={updateEntry} />} />
-          <Route path="/stations" element={<StationsPage user={user} stations={stations} setStations={setStations} />} />
+          <Route path="/" element={
+            <Dashboard 
+              user={user} 
+              entries={entries} 
+              stations={stations} 
+              alerts={alerts} 
+              onResolveAlert={resolveAlert}
+            />
+          } />
+          <Route path="/entry" element={
+            <DailyEntryPage 
+              user={user} 
+              stations={stations} 
+              onAddEntry={addEntry} 
+              existingEntries={entries} 
+            />
+          } />
+          <Route path="/approvals" element={
+            <Approvals user={user} entries={entries} onUpdateEntry={updateEntry} />
+          } />
+          <Route path="/stations" element={
+            <StationsPage 
+              user={user} 
+              stations={stations} 
+              setStations={setStations} 
+              onProcureStock={procureStock}
+            />
+          } />
           <Route path="/reports" element={<ReportsPage entries={entries} stations={stations} />} />
           <Route path="/audit" element={<AuditLogs entries={entries} />} />
           <Route path="*" element={<Navigate to="/" />} />

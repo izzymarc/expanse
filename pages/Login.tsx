@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { INITIAL_USERS } from '../constants';
-import { ShieldCheck, ArrowRight, Fuel, Sparkles, ChevronRight } from 'lucide-react';
+import { ShieldCheck, ArrowRight, Fuel, Sparkles, ChevronRight, Globe, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface LoginPageProps {
@@ -17,40 +17,61 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 mesh-gradient relative overflow-hidden">
-      {/* Decorative Blur Orbs */}
-      <div className="absolute top-0 -left-1/4 w-1/2 h-1/2 bg-blue-600/10 blur-[120px] rounded-full" />
-      <div className="absolute bottom-0 -right-1/4 w-1/2 h-1/2 bg-indigo-600/10 blur-[120px] rounded-full" />
+    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden bg-slate-950">
+      {/* Background Cinematic Image - High Performance Logistics Theme */}
+      <div className="absolute inset-0 z-0">
+        <img 
+          src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=2000&auto=format&fit=crop" 
+          alt="Expanse Operations" 
+          className="w-full h-full object-cover opacity-20 grayscale"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/60 via-slate-950/40 to-slate-950" />
+      </div>
+
+      {/* Decorative Elements */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px]" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600/10 rounded-full blur-[120px]" />
 
       <div className="w-full max-w-xl relative z-10">
         <motion.div 
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
+          transition={{ duration: 1, ease: "easeOut" }}
           className="text-center mb-12"
         >
-          <div className="inline-flex relative h-24 w-24 items-center justify-center rounded-[2.5rem] bg-gradient-to-br from-blue-500 to-indigo-700 shadow-[0_20px_50px_rgba(37,99,235,0.4)] mb-8">
-            <Fuel size={44} className="text-white" />
-            <div className="absolute -top-2 -right-2 bg-white rounded-full p-2 shadow-xl">
-               <Sparkles size={16} className="text-blue-600" />
-            </div>
+          <div className="inline-flex relative h-28 w-28 items-center justify-center rounded-[2.5rem] bg-slate-900 border border-white/10 shadow-[0_0_60px_rgba(37,99,235,0.2)] mb-8">
+            <Fuel size={48} className="text-blue-500" />
+            <motion.div 
+              animate={{ rotate: 360 }}
+              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-0 rounded-[2.5rem] border border-blue-500/30 border-dashed"
+            />
           </div>
-          <h1 className="text-5xl font-black text-white tracking-tighter">
+          <h1 className="text-6xl font-black text-white tracking-tighter mb-2">
             EXPANSE
           </h1>
-          <p className="text-slate-400 mt-3 text-sm font-bold uppercase tracking-[0.4em] opacity-80">Inventory & Settlement</p>
+          <div className="flex items-center justify-center gap-3">
+             <div className="h-px w-8 bg-blue-500/50" />
+             <p className="text-blue-400 text-xs font-black uppercase tracking-[0.6em]">Core Intelligence</p>
+             <div className="h-px w-8 bg-blue-500/50" />
+          </div>
         </motion.div>
 
         <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
+          initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="glass rounded-[3rem] shadow-[0_40px_80px_rgba(0,0,0,0.3)] overflow-hidden border border-white/10"
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="glass rounded-[3.5rem] shadow-[0_40px_100px_rgba(0,0,0,0.6)] overflow-hidden border border-white/10 backdrop-blur-2xl"
         >
           <div className="p-12">
-            <div className="mb-10">
-              <h2 className="text-2xl font-black text-slate-900 tracking-tight">System Portal</h2>
-              <p className="text-sm text-slate-500 mt-2 font-medium">Authentication required for enterprise access.</p>
+            <div className="mb-10 flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Access Terminal</h2>
+                <p className="text-sm text-slate-500 mt-1 font-medium">Verify credentials for Station Network</p>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                <Globe size={20} className="text-slate-400" />
+              </div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -58,11 +79,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 {INITIAL_USERS.map((u) => (
                   <motion.label 
                     key={u.id}
-                    whileHover={{ x: 5 }}
-                    className={`group flex items-center justify-between p-5 rounded-[1.5rem] border-2 cursor-pointer transition-all ${
+                    whileHover={{ x: 5, backgroundColor: 'rgba(255,255,255,0.8)' }}
+                    className={`group flex items-center justify-between p-5 rounded-[1.75rem] border-2 cursor-pointer transition-all ${
                       email === u.email 
-                        ? 'border-blue-500 bg-blue-50/50 ring-4 ring-blue-500/10' 
-                        : 'border-slate-100/50 bg-white/50 hover:bg-white hover:border-slate-200'
+                        ? 'border-blue-600 bg-white shadow-xl shadow-blue-500/10' 
+                        : 'border-slate-50 bg-slate-50/50 hover:border-slate-200'
                     }`}
                   >
                     <input 
@@ -73,48 +94,60 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                       onChange={() => setEmail(u.email)}
                     />
                     <div className="flex items-center gap-4">
-                      <div className={`h-10 w-10 rounded-2xl flex items-center justify-center font-bold text-sm ${
-                        email === u.email ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'
-                      } transition-colors`}>
+                      <div className={`h-12 w-12 rounded-2xl flex items-center justify-center font-black text-sm transition-all duration-300 ${
+                        email === u.email ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-white text-slate-400 border border-slate-100'
+                      }`}>
                         {u.name.charAt(0)}
                       </div>
                       <div>
-                        <p className={`text-sm font-black transition-colors ${email === u.email ? 'text-blue-900' : 'text-slate-700'}`}>{u.name}</p>
-                        <p className={`text-[9px] uppercase font-black tracking-widest transition-colors ${email === u.email ? 'text-blue-500' : 'text-slate-400'}`}>{u.role.replace('_', ' ')}</p>
+                        <p className={`text-sm font-black transition-colors ${email === u.email ? 'text-slate-900' : 'text-slate-600'}`}>{u.name}</p>
+                        <p className={`text-[9px] uppercase font-black tracking-widest transition-colors ${email === u.email ? 'text-blue-600' : 'text-slate-400'}`}>{u.role.replace('_', ' ')}</p>
                       </div>
                     </div>
-                    <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                      email === u.email ? 'border-blue-600 bg-blue-600 scale-110' : 'border-slate-300'
-                    }`}>
-                      {email === u.email && <div className="h-2 w-2 rounded-full bg-white" />}
-                    </div>
+                    {email === u.email && (
+                      <motion.div layoutId="check" className="h-6 w-6 bg-blue-600 rounded-full flex items-center justify-center">
+                        <Zap size={12} className="text-white fill-current" />
+                      </motion.div>
+                    )}
                   </motion.label>
                 ))}
               </div>
 
-              <motion.button 
+              <button 
                 type="submit"
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full mt-6 py-5 bg-slate-900 text-white rounded-[1.5rem] font-black text-sm uppercase tracking-[0.2em] flex items-center justify-center gap-3 shadow-2xl hover:bg-blue-600 transition-all"
+                className="group relative w-full mt-8 py-6 bg-slate-900 text-white rounded-[1.75rem] font-black text-sm uppercase tracking-[0.25em] flex items-center justify-center gap-3 shadow-2xl overflow-hidden transition-all active:scale-[0.98]"
               >
-                Establish Connection <ChevronRight size={18} />
-              </motion.button>
+                <div className="relative z-10 flex items-center gap-3">
+                  Initialize Session <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </button>
             </form>
           </div>
           
-          <div className="bg-slate-900/5 px-12 py-6 border-t border-white/10 flex items-center justify-between">
-             <div className="flex items-center gap-3 text-slate-500 text-[10px] font-black uppercase tracking-widest">
-               <ShieldCheck size={16} className="text-emerald-500" />
-               End-to-end Encrypted
+          <div className="bg-slate-900/5 px-12 py-8 border-t border-slate-100 flex items-center justify-between">
+             <div className="flex items-center gap-3 text-slate-400 text-[10px] font-black uppercase tracking-widest">
+               <ShieldCheck size={18} className="text-emerald-500" />
+               SECURE-CORE ACTIVATED
              </div>
-             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">v2.4.0</p>
+             <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">v3.0.0 "AURORA"</p>
+             </div>
           </div>
         </motion.div>
         
-        <p className="text-center text-slate-500/60 text-[10px] font-black uppercase tracking-[0.3em] mt-12">
-          &copy; 2024 Expanse Global Logistics
-        </p>
+        <div className="mt-12 flex flex-col items-center gap-4">
+           <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.5em] opacity-60">
+             &copy; 2026 Expanse Global Logistics
+           </p>
+           <div className="flex gap-6 opacity-30 grayscale">
+              {/* Mock Partner Logos */}
+              <div className="h-4 w-12 bg-white rounded-sm" />
+              <div className="h-4 w-12 bg-white rounded-sm" />
+              <div className="h-4 w-12 bg-white rounded-sm" />
+           </div>
+        </div>
       </div>
     </div>
   );

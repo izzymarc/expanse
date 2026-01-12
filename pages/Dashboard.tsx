@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { User, DailyEntry, Station, Alert, UserRole } from '../types';
 import { 
   TrendingUp, 
@@ -9,7 +9,13 @@ import {
   AlertTriangle, 
   CheckCircle2, 
   ArrowRight,
-  Clock
+  Clock,
+  Sparkles,
+  Zap,
+  BarChart,
+  Target,
+  Waves,
+  Activity
 } from 'lucide-react';
 import { 
   XAxis, 
@@ -18,18 +24,28 @@ import {
   Tooltip, 
   ResponsiveContainer,
   AreaChart,
-  Area
+  Area,
+  BarChart as ReBarChart,
+  Bar,
+  Cell,
+  LineChart,
+  Line
 } from 'recharts';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { GoogleGenAI } from "@google/genai";
 
 interface DashboardProps {
   user: User;
   entries: DailyEntry[];
   stations: Station[];
   alerts: Alert[];
+  onResolveAlert: (id: string) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, entries, stations, alerts }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, entries, stations, alerts, onResolveAlert }) => {
+  const [aiInsight, setAiInsight] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const filteredEntries = user.role === UserRole.STATION_MANAGER 
     ? entries.filter(e => e.stationId === user.stationId)
     : entries;
@@ -38,6 +54,58 @@ const Dashboard: React.FC<DashboardProps> = ({ user, entries, stations, alerts }
   const totalQuantity = filteredEntries.reduce((acc, curr) => acc + curr.quantitySold, 0);
   const totalNet = filteredEntries.reduce((acc, curr) => acc + curr.netAmount, 0);
   const pendingReconciliations = filteredEntries.filter(e => e.status === 'PENDING').length;
+
+  const generateAiInsight = async () => {
+    setIsGenerating(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const summary = `System: Expanse Core 3.0. 
+                       Stations Capacity: ${stations.reduce((a,b) => a+b.capacity, 0)}L. 
+                       Current Stock: ${stations.reduce((a,b) => a+b.currentStock, 0)}L. 
+                       Revenue: ₦${totalSales}. 
+                       Active Alerts: ${alerts.filter(a => !a.resolved).length}.`;
+      
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `As the Expanse 2026 Operations Strategist, provide a razor-sharp, high-level business brief (max 35 words) based on this data: ${summary}. Mention specific operational optimization or market positioning.`,
+      });
+      setAiInsight(response.text || "Operational sync confirmed. System optimal.");
+    } catch (error) {
+      setAiInsight("Telemetry link interrupted. Local protocols active.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  useEffect(() => {
+    generateAiInsight();
+  }, [stations.length, entries.length]);
+
+  const forecastData = useMemo(() => {
+    const base = [...Array(10)].map((_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (9 - i));
+      const sales = 15000 + Math.random() * 5000;
+      return {
+        name: d.toISOString().split('T')[0].slice(8),
+        actual: i < 7 ? sales : null,
+        forecast: i >= 6 ? sales + (Math.random() * 2000 - 1000) : null,
+        demand: 16000 + (Math.sin(i) * 3000)
+      };
+    });
+    return base;
+  }, []);
+
+  const stationPerformanceData = useMemo(() => {
+    return stations.map((s, idx) => {
+      const stationEntries = entries.filter(e => e.stationId === s.id);
+      return {
+        name: s.name.split('-')[1]?.trim() || s.name,
+        revenue: stationEntries.reduce((acc, curr) => acc + curr.totalPayments, 0),
+        color: ['#3b82f6', '#818cf8', '#6366f1', '#4f46e5'][idx % 4]
+      };
+    }).sort((a, b) => b.revenue - a.revenue);
+  }, [stations, entries]);
 
   const chartData = useMemo(() => {
     const last7Days = [...Array(7)].map((_, i) => {
@@ -56,242 +124,247 @@ const Dashboard: React.FC<DashboardProps> = ({ user, entries, stations, alerts }
     });
   }, [filteredEntries]);
 
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const item = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 }
-  };
-
   return (
     <motion.div 
-      variants={container}
-      initial="hidden"
-      animate="show"
-      className="space-y-10"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="space-y-10 pb-20"
     >
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight">
-            Dashboard
+      {/* 2026 Aurora Header */}
+      <div className="flex flex-col xl:flex-row gap-8 items-center justify-between">
+        <div className="w-full xl:w-auto">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="h-1.5 w-12 bg-blue-600 rounded-full" />
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-600">Strategic Overview</p>
+          </div>
+          <h1 className="text-5xl font-black text-slate-900 tracking-tight">
+            Aurora Command
           </h1>
-          <p className="text-slate-500 mt-2 font-medium">Monitoring enterprise operations in real-time.</p>
         </div>
-        <div className="flex gap-3">
-           <button className="px-5 py-2.5 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm">
-             Export Data
-           </button>
-           <button className="px-5 py-2.5 bg-blue-600 text-white rounded-2xl text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100">
-             New Entry
-           </button>
-        </div>
+
+        <motion.div 
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="xl:w-2/5 w-full glass rounded-[2.5rem] p-7 border border-blue-100 shadow-2xl shadow-blue-500/5 relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 p-3 opacity-10">
+            <Activity size={64} className="text-blue-600" />
+          </div>
+          <div className="flex items-center gap-4 mb-4">
+            <div className="bg-slate-900 p-3 rounded-2xl text-blue-400 shadow-xl">
+              <Sparkles size={20} />
+            </div>
+            <div>
+              <h3 className="font-black text-xs uppercase tracking-widest text-slate-400 leading-none">AI Business Brief</h3>
+              <p className="text-[10px] text-blue-600 font-bold mt-1">Live from Intelligence Hub</p>
+            </div>
+          </div>
+          <p className="text-sm font-bold text-slate-700 leading-relaxed italic border-l-4 border-blue-500 pl-4 py-1">
+            {isGenerating ? "Synthesizing global telemetry..." : aiInsight}
+          </p>
+        </motion.div>
       </div>
 
+      {/* KPI Cards with Pulsing Effects */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard 
-          title="Total Revenue" 
+          title="Consolidated Revenue" 
           value={`₦${totalSales.toLocaleString()}`} 
-          trend="+12.5%" 
+          trend="+14.2%" 
           trendUp 
           icon={<DollarSign size={24} />} 
-          colorClass="bg-emerald-500"
-        />
-        <KpiCard 
-          title="Fuel Dispatched" 
-          value={`${totalQuantity.toLocaleString()}L`} 
-          trend="+8.2%" 
-          trendUp 
-          icon={<Fuel size={24} />} 
           colorClass="bg-blue-600"
+          pulse
         />
         <KpiCard 
-          title="Net Profit" 
+          title="Active Inventory" 
+          value={`${stations.reduce((a,b) => a+b.currentStock, 0).toLocaleString()}L`} 
+          icon={<Fuel size={24} />} 
+          colorClass="bg-slate-900"
+        />
+        <KpiCard 
+          title="Operational Alpha" 
           value={`₦${totalNet.toLocaleString()}`} 
-          trend="-2.4%" 
+          trend="-1.2%" 
           trendUp={false} 
           icon={<TrendingUp size={24} />} 
           colorClass="bg-indigo-600"
         />
         <KpiCard 
-          title="Awaiting Review" 
+          title="Audit Backlog" 
           value={pendingReconciliations} 
           icon={<Clock size={24} />} 
-          colorClass="bg-amber-500"
+          colorClass="bg-rose-500"
         />
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-3">
-        <motion.div variants={item} className="lg:col-span-2 rounded-[2.5rem] bg-white p-10 shadow-[0_20px_50px_rgba(0,0,0,0.02)] border border-slate-100 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50/50 rounded-full blur-3xl -mr-32 -mt-32 -z-10" />
-          <div className="mb-10 flex items-center justify-between">
-            <div>
-              <h3 className="text-xl font-bold text-slate-900 tracking-tight">Financial Trajectory</h3>
-              <p className="text-sm text-slate-400 mt-1">Daily revenue vs operating costs</p>
-            </div>
-            <div className="flex gap-2">
-              <span className="flex items-center gap-2 text-xs font-bold text-slate-400 px-3 py-1.5 bg-slate-50 rounded-xl">
-                <div className="h-2 w-2 rounded-full bg-blue-600" /> Revenue
-              </span>
-              <span className="flex items-center gap-2 text-xs font-bold text-slate-400 px-3 py-1.5 bg-slate-50 rounded-xl">
-                <div className="h-2 w-2 rounded-full bg-rose-500" /> Expenses
-              </span>
-            </div>
-          </div>
-          <div className="h-[350px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.15}/>
-                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="colorExp" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis 
-                  dataKey="name" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{fill: '#94a3b8', fontSize: 12, fontWeight: 600}} 
-                  dy={15} 
-                />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{fill: '#94a3b8', fontSize: 12, fontWeight: 600}} 
-                  tickFormatter={(value) => `₦${value/1000}k`} 
-                />
-                <Tooltip 
-                  cursor={{stroke: '#e2e8f0', strokeWidth: 2}}
-                  contentStyle={{borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.1)', padding: '16px'}}
-                  itemStyle={{fontWeight: 'bold', fontSize: '13px'}}
-                />
-                <Area type="monotone" dataKey="sales" stroke="#2563eb" fillOpacity={1} fill="url(#colorSales)" strokeWidth={3} animationDuration={1500} />
-                <Area type="monotone" dataKey="expenses" stroke="#f43f5e" fillOpacity={1} fill="url(#colorExp)" strokeWidth={3} strokeDasharray="5 5" animationDuration={1500} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </motion.div>
-
-        <motion.div variants={item} className="rounded-[2.5rem] bg-white p-8 shadow-[0_20px_50px_rgba(0,0,0,0.02)] border border-slate-100 flex flex-col">
-          <div className="mb-8 flex items-center justify-between">
-            <h3 className="text-xl font-bold text-slate-900 tracking-tight">Priority Alerts</h3>
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 px-3 py-1 rounded-lg">Live</span>
-          </div>
-          <div className="flex-1 space-y-5 overflow-y-auto pr-2 custom-scrollbar">
-            {alerts.filter(a => !a.resolved).slice(0, 5).map((alert) => (
-              <div key={alert.id} className="group relative flex items-start gap-4 p-5 rounded-3xl bg-slate-50/50 border border-slate-100 hover:border-blue-200 hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300">
-                <div className={`mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${alert.severity === 'error' ? 'bg-red-100 text-red-600 shadow-red-100' : 'bg-amber-100 text-amber-600 shadow-amber-100'} shadow-lg`}>
-                  <AlertTriangle size={18} />
+      <div className="grid gap-8 lg:grid-cols-12">
+        {/* Main Forecasting Area */}
+        <div className="lg:col-span-8 space-y-8">
+           <div className="rounded-[3rem] bg-white p-10 shadow-sm border border-slate-100">
+              <div className="mb-10 flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">Supply vs Demand Forecast</h3>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Predictive analysis for next 72 hours</p>
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{alert.stationName}</p>
-                    <p className="text-[10px] text-slate-400 font-bold">{new Date(alert.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                <div className="flex gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="h-3 w-3 rounded-full bg-blue-500" />
+                    <span className="text-[10px] font-black uppercase text-slate-400">Actual</span>
                   </div>
-                  <p className="text-sm font-bold text-slate-900 mt-1 line-clamp-2">{alert.message}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="h-3 w-3 rounded-full bg-indigo-200" />
+                    <span className="text-[10px] font-black uppercase text-slate-400">Projected</span>
+                  </div>
+                </div>
+              </div>
+              <div className="h-[350px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={forecastData}>
+                    <defs>
+                      <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorForecast" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#818cf8" stopOpacity={0.1}/>
+                        <stop offset="95%" stopColor="#818cf8" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 'bold'}} />
+                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 'bold'}} />
+                    <Tooltip contentStyle={{borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}} />
+                    <Area type="monotone" dataKey="actual" stroke="#3b82f6" fillOpacity={1} fill="url(#colorActual)" strokeWidth={4} />
+                    <Area type="monotone" dataKey="forecast" stroke="#818cf8" strokeDasharray="5 5" fillOpacity={1} fill="url(#colorForecast)" strokeWidth={3} />
+                    <Line type="monotone" dataKey="demand" stroke="#e11d48" strokeWidth={2} dot={false} strokeOpacity={0.3} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+           </div>
+        </div>
+
+        {/* Vertical performance ranking */}
+        <div className="lg:col-span-4 rounded-[3rem] bg-slate-900 p-10 shadow-2xl shadow-blue-900/10 flex flex-col">
+          <div className="mb-10 text-white">
+            <h3 className="text-xl font-black tracking-tight">Hub Efficiency</h3>
+            <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1">Relative performance ranking</p>
+          </div>
+          <div className="flex-1 space-y-6">
+            {stationPerformanceData.map((station, i) => (
+              <div key={station.name} className="relative">
+                 <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-black text-white">{station.name}</span>
+                    <span className="text-[10px] font-bold text-slate-400">₦{(station.revenue/1000000).toFixed(1)}M</span>
+                 </div>
+                 <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(station.revenue / stationPerformanceData[0].revenue) * 100}%` }}
+                      transition={{ duration: 1, delay: i * 0.1 }}
+                      className="h-full rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+                    />
+                 </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-10 p-5 bg-white/5 rounded-3xl border border-white/10">
+             <div className="flex items-center gap-3">
+                <Target size={20} className="text-blue-500" />
+                <p className="text-[10px] font-black text-white uppercase tracking-widest">Global Sales Target</p>
+             </div>
+             <p className="text-2xl font-black text-white mt-2">84.2%</p>
+             <div className="h-1 w-full bg-white/10 rounded-full mt-2">
+                <div className="h-full w-[84%] bg-emerald-500 rounded-full" />
+             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Lower Section: Inventory Grid & Incident Hub */}
+      <div className="grid gap-8 lg:grid-cols-2">
+        <div className="rounded-[3rem] bg-white p-10 shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Node Telemetry</h3>
+            <button className="text-blue-600 font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
+              View Map <ArrowRight size={14} />
+            </button>
+          </div>
+          <div className="space-y-6">
+            {stations.map(station => (
+              <div key={station.id} className="group p-2 hover:bg-slate-50 rounded-[1.5rem] transition-all">
+                <div className="flex justify-between items-center mb-3">
+                  <div className="flex items-center gap-4">
+                    <div className="h-14 w-14 rounded-2xl overflow-hidden shadow-2xl border-4 border-white">
+                      <img 
+                        src={station.imageUrl || 'https://images.unsplash.com/photo-1563906267088-b029e7101114?q=80&w=100&auto=format&fit=crop'} 
+                        alt={station.name}
+                        className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                      />
+                    </div>
+                    <div>
+                       <span className="font-black text-slate-900 block text-sm leading-none">{station.name}</span>
+                       <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest mt-1.5 inline-block">{station.location}</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-black text-slate-900 block">{station.currentStock.toLocaleString()}L</span>
+                    <span className={`text-[10px] font-bold uppercase tracking-widest ${station.currentStock < station.lowStockThreshold ? 'text-rose-500' : 'text-emerald-500'}`}>
+                      {station.currentStock < station.lowStockThreshold ? 'Critical' : 'Stable'}
+                    </span>
+                  </div>
+                </div>
+                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(station.currentStock / station.capacity) * 100}%` }}
+                    className={`h-full rounded-full transition-all duration-1000 ${station.currentStock < station.lowStockThreshold ? 'bg-rose-500' : 'bg-blue-600'}`}
+                  />
                 </div>
               </div>
             ))}
-            {alerts.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-20 text-center opacity-40">
+          </div>
+        </div>
+
+        <div className="rounded-[3rem] bg-white p-10 shadow-sm border border-slate-100 flex flex-col">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Active Anomalies</h3>
+            <div className="flex items-center gap-2 px-3 py-1 bg-rose-50 text-rose-600 rounded-full">
+               <span className="h-1.5 w-1.5 bg-rose-500 rounded-full animate-ping" />
+               <span className="text-[10px] font-black uppercase tracking-widest">Monitoring</span>
+            </div>
+          </div>
+          <div className="space-y-4 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+            {alerts.filter(a => !a.resolved).length > 0 ? (
+              alerts.filter(a => !a.resolved).map(alert => (
+                <div key={alert.id} className="flex items-center gap-5 p-5 rounded-[2rem] bg-slate-50 border border-slate-100 hover:border-blue-200 transition-all group">
+                   <div className={`p-3 rounded-2xl shadow-lg ${alert.severity === 'error' ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-600'}`}>
+                     <AlertTriangle size={20} />
+                   </div>
+                   <div className="flex-1">
+                      <div className="flex justify-between">
+                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{alert.stationName}</p>
+                        <p className="text-[9px] font-bold text-slate-400">{new Date(alert.timestamp).toLocaleTimeString()}</p>
+                      </div>
+                      <p className="text-sm font-black text-slate-900 mt-1">{alert.message}</p>
+                   </div>
+                   <button 
+                    onClick={() => onResolveAlert(alert.id)}
+                    className="p-3 bg-white text-blue-600 rounded-2xl opacity-0 group-hover:opacity-100 transition-all shadow-sm hover:bg-blue-600 hover:text-white"
+                   >
+                     <CheckCircle2 size={18} />
+                   </button>
+                </div>
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center py-20 text-center opacity-30">
                 <CheckCircle2 size={48} className="text-emerald-500 mb-4" />
-                <p className="text-sm font-bold text-slate-900 uppercase tracking-widest">Operational Perfection</p>
-                <p className="text-xs text-slate-400 mt-2">No critical alerts detected.</p>
+                <p className="text-sm font-black text-slate-900 uppercase tracking-widest">Network Clear</p>
               </div>
             )}
           </div>
-          <button className="mt-8 w-full group flex items-center justify-center gap-3 rounded-[1.25rem] bg-slate-900 py-4 text-xs font-black uppercase tracking-widest text-white hover:bg-blue-600 transition-all shadow-lg shadow-slate-200">
-            View All Insights <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
-          </button>
-        </motion.div>
+        </div>
       </div>
-
-      {(user.role === UserRole.ADMIN || user.role === UserRole.CEO) && (
-        <motion.div variants={item} className="rounded-[2.5rem] bg-white p-10 shadow-[0_20px_50px_rgba(0,0,0,0.02)] border border-slate-100">
-          <div className="flex items-center justify-between mb-10">
-             <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Regional Station Performance</h3>
-             <div className="flex items-center gap-3">
-               <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest rounded-xl">
-                 <div className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" /> Global Stable
-               </div>
-             </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-slate-100 text-[11px] font-black uppercase tracking-[0.15em] text-slate-400">
-                  <th className="pb-6">Distribution Hub</th>
-                  <th className="pb-6">Inventory Status</th>
-                  <th className="pb-6 text-right">Daily Velocity</th>
-                  <th className="pb-6 text-center">Protocol Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {stations.map((station) => {
-                  const stockPercent = (station.currentStock / station.capacity) * 100;
-                  const isLow = station.currentStock < station.lowStockThreshold;
-                  return (
-                    <tr key={station.id} className="group hover:bg-slate-50/50 transition-colors">
-                      <td className="py-8 pr-4">
-                        <div className="flex items-center gap-5">
-                          <div className="h-12 w-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-500 font-bold group-hover:bg-white group-hover:shadow-lg transition-all">
-                            {station.name.charAt(station.name.length - 1)}
-                          </div>
-                          <div>
-                            <p className="font-bold text-slate-900 text-lg leading-none">{station.name}</p>
-                            <p className="text-xs text-slate-400 font-medium mt-1.5">{station.location}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-8 pr-4 min-w-[200px]">
-                        <div className="w-full">
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="text-sm font-black text-slate-900">{station.currentStock.toLocaleString()}L</span>
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{Math.round(stockPercent)}% Capacity</span>
-                          </div>
-                          <div className="h-2.5 w-full rounded-full bg-slate-100 overflow-hidden">
-                            <motion.div 
-                              initial={{ width: 0 }}
-                              animate={{ width: `${stockPercent}%` }}
-                              transition={{ duration: 1.5, ease: "easeOut" }}
-                              className={`h-full rounded-full shadow-[0_0_12px_rgba(0,0,0,0.1)] ${isLow ? 'bg-gradient-to-r from-red-500 to-rose-400' : 'bg-gradient-to-r from-blue-600 to-indigo-500'}`} 
-                            />
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-8 pr-4 text-right">
-                        <p className="text-lg font-black text-slate-900">
-                          ₦{entries.filter(e => e.stationId === station.id && e.date === new Date().toISOString().split('T')[0])
-                            .reduce((acc, curr) => acc + curr.totalPayments, 0).toLocaleString()}
-                        </p>
-                        <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mt-1">Settled</p>
-                      </td>
-                      <td className="py-8 text-center">
-                        <div className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-[10px] font-black uppercase tracking-[0.1em] ${isLow ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                          <div className={`h-2 w-2 rounded-full ${isLow ? 'bg-red-500 animate-ping' : 'bg-emerald-500'}`} />
-                          {isLow ? 'Critically Low' : 'Operational'}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </motion.div>
-      )}
     </motion.div>
   );
 };
@@ -303,29 +376,35 @@ interface KpiCardProps {
   trendUp?: boolean;
   icon: React.ReactNode;
   colorClass: string;
+  pulse?: boolean;
 }
 
-const KpiCard: React.FC<KpiCardProps> = ({ title, value, trend, trendUp, icon, colorClass }) => (
+const KpiCard: React.FC<KpiCardProps> = ({ title, value, trend, trendUp, icon, colorClass, pulse }) => (
   <motion.div 
-    variants={{ hidden: { opacity: 0, scale: 0.95 }, show: { opacity: 1, scale: 1 } }}
-    whileHover={{ y: -5, transition: { duration: 0.2 } }}
-    className="relative group rounded-[2.5rem] bg-white p-8 shadow-[0_20px_50px_rgba(0,0,0,0.02)] border border-slate-100 overflow-hidden"
+    whileHover={{ y: -8, scale: 1.02 }}
+    className="rounded-[2.5rem] bg-white p-8 shadow-sm border border-slate-100 relative overflow-hidden group"
   >
+    {pulse && (
+      <div className="absolute top-4 right-4 h-2 w-2">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+      </div>
+    )}
     <div className="flex items-start justify-between">
-      <div className={`rounded-2xl p-4 ${colorClass} text-white shadow-xl group-hover:scale-110 transition-transform duration-300`}>
+      <div className={`rounded-2xl p-4 ${colorClass} text-white shadow-2xl transition-transform group-hover:rotate-6`}>
         {icon}
       </div>
       {trend && (
-        <span className={`flex items-center gap-1.5 text-xs font-black tracking-widest px-3 py-1.5 rounded-xl ${trendUp ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-          {trendUp ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+        <span className={`px-2.5 py-1.5 rounded-xl text-[10px] font-black ${trendUp ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
           {trend}
         </span>
       )}
     </div>
     <div className="mt-8">
-      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{title}</p>
-      <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">{value}</p>
+      <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">{title}</p>
+      <p className="mt-2 text-3xl font-black text-slate-900 tracking-tighter">{value}</p>
     </div>
+    <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
   </motion.div>
 );
 

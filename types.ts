@@ -21,6 +21,7 @@ export interface Station {
   currentStock: number;
   capacity: number;
   lowStockThreshold: number;
+  imageUrl?: string;
 }
 
 export interface PaymentBreakdown {
@@ -68,6 +69,7 @@ export interface DailyEntry {
   reconciliationDelta: number;
   auditTrail: AuditLog[];
   approverComments?: string;
+  aiInsights?: string;
 }
 
 export enum AlertType {
@@ -90,7 +92,9 @@ export interface Alert {
 export interface StockPurchase {
   id: string;
   stationId: string;
+  stationName: string;
   date: string;
   quantity: number;
+  cost: number;
   supplier: string;
 }

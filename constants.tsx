@@ -11,9 +11,33 @@ export const INITIAL_USERS: User[] = [
 ];
 
 export const INITIAL_STATIONS: Station[] = [
-  { id: 's1', name: 'Expanse Station - Lagos', location: 'Lekki Phase 1', currentStock: 45000, capacity: 60000, lowStockThreshold: 10000 },
-  { id: 's2', name: 'Expanse Station - Abuja', location: 'Maitama District', currentStock: 12000, capacity: 50000, lowStockThreshold: 10000 },
-  { id: 's3', name: 'Expanse Station - Port Harcourt', location: 'GRA Phase 2', currentStock: 8000, capacity: 50000, lowStockThreshold: 10000 },
+  { 
+    id: 's1', 
+    name: 'Expanse Station - Lagos', 
+    location: 'Lekki Phase 1', 
+    currentStock: 45000, 
+    capacity: 60000, 
+    lowStockThreshold: 10000,
+    imageUrl: 'https://images.unsplash.com/photo-1563906267088-b029e7101114?q=80&w=800&auto=format&fit=crop'
+  },
+  { 
+    id: 's2', 
+    name: 'Expanse Station - Abuja', 
+    location: 'Maitama District', 
+    currentStock: 12000, 
+    capacity: 50000, 
+    lowStockThreshold: 10000,
+    imageUrl: 'https://images.unsplash.com/photo-1527018601619-a508a2be00cd?q=80&w=800&auto=format&fit=crop'
+  },
+  { 
+    id: 's3', 
+    name: 'Expanse Station - Port Harcourt', 
+    location: 'GRA Phase 2', 
+    currentStock: 8000, 
+    capacity: 50000, 
+    lowStockThreshold: 10000,
+    imageUrl: 'https://images.unsplash.com/photo-1567113463300-102550693930?q=80&w=800&auto=format&fit=crop'
+  },
 ];
 
 export const FUEL_RATE = 650; // Constant rate for simulation
