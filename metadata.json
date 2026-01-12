@@ -1,0 +1,7 @@
+{
+  "name": "Expanse Limited Inventory & Reconciliation System",
+  "description": "A comprehensive multi-station fuel inventory management system featuring real-time tracking, automated reconciliation, and advanced reporting for Expanse Limited.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
