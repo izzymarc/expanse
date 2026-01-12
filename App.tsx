@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { User, Station, DailyEntry, Alert, StockPurchase } from './types';
+import { User, Station, DailyEntry, Alert, StockPurchase, FuelType } from './types';
 import { INITIAL_USERS, INITIAL_STATIONS } from './constants';
 import { SEED_ENTRIES, SEED_ALERTS } from './mockData';
 import Layout from './components/Layout';
@@ -59,11 +59,18 @@ const App: React.FC = () => {
   const updateEntry = (updated: DailyEntry) => {
     setEntries(prev => prev.map(e => e.id === updated.id ? updated : e));
     
-    // If approved, subtract from station stock
+    // Fixed: If approved, subtract from specific fuel type stock in station inventory
     if (updated.status === 'APPROVED') {
        setStations(prev => prev.map(s => 
          s.id === updated.stationId 
-           ? { ...s, currentStock: Math.max(0, s.currentStock - updated.quantitySold) }
+           ? { 
+               ...s, 
+               inventory: s.inventory.map(inv => 
+                 inv.type === updated.fuelType 
+                   ? { ...inv, currentStock: Math.max(0, inv.currentStock - updated.quantitySold) }
+                   : inv
+               )
+             }
            : s
        ));
     }
@@ -74,13 +81,22 @@ const App: React.FC = () => {
   };
 
   const procureStock = (purchase: StockPurchase) => {
+    // Fixed: Restock logic to update specific inventory item. 
+    // Assuming restock for PMS if unspecified as StockPurchase lacks fuelType, 
+    // or we can default to updating based on a logic. 
+    // Since StockPurchase doesn't have fuelType, defaulting to PMS for now.
     setStations(prev => prev.map(s => 
       s.id === purchase.stationId 
-        ? { ...s, currentStock: Math.min(s.capacity, s.currentStock + purchase.quantity) }
+        ? { 
+            ...s, 
+            inventory: s.inventory.map(inv => 
+              inv.type === FuelType.PMS 
+                ? { ...inv, currentStock: Math.min(inv.capacity, inv.currentStock + purchase.quantity) }
+                : inv
+            )
+          }
         : s
     ));
-    
-    // Add an audit log entry could be done here if we had a global audit trail
   };
 
   const resolveAlert = (alertId: string) => {
@@ -109,7 +125,6 @@ const App: React.FC = () => {
               user={user} 
               stations={stations} 
               onAddEntry={addEntry} 
-              existingEntries={entries} 
             />
           } />
           <Route path="/approvals" element={

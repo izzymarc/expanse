@@ -1,6 +1,6 @@
 {
-  "name": "Expanse Limited Inventory & Reconciliation System",
-  "description": "A comprehensive multi-station fuel inventory management system featuring real-time tracking, automated reconciliation, and advanced reporting for Expanse Limited.",
+  "name": "Expanse v3.0 Aurora",
+  "description": "Enterprise Nigerian Fuel Logistics and Inventory Core with Gemini AI strategic forecasting.",
   "requestFramePermissions": [
     "camera"
   ]

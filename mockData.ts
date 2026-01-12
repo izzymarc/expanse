@@ -1,5 +1,5 @@
 
-import { DailyEntry, EntryStatus, UserRole, Alert, AlertType } from './types';
+import { DailyEntry, EntryStatus, Alert, AlertType, FuelType, PaymentBreakdown, ExpenseBreakdown } from './types';
 import { INITIAL_STATIONS, FUEL_RATE } from './constants';
 
 const generateRandomData = () => {
@@ -7,7 +7,7 @@ const generateRandomData = () => {
   const alerts: Alert[] = [];
   const today = new Date();
 
-  INITIAL_STATIONS.forEach((station, sIdx) => {
+  INITIAL_STATIONS.forEach((station) => {
     for (let i = 0; i < 7; i++) {
       const date = new Date();
       date.setDate(today.getDate() - i);
@@ -18,31 +18,40 @@ const generateRandomData = () => {
       
       // Simulate some mismatches for Accountant testing
       const hasMismatch = Math.random() > 0.8;
-      const cash = (amount * 0.4) - (hasMismatch ? 5000 : 0);
-      const pos = amount * 0.3;
-      const transfers = amount * 0.2;
-      const noneSales = amount * 0.05;
-      const airRtt = amount * 0.05;
-
-      const totalPayments = cash + pos + transfers + noneSales + airRtt;
       
-      const expenses = {
-        dieselCost: 25000,
-        posCharges: totalPayments * 0.01,
-        operationalExpenses: 15000
+      // Fixed PaymentBreakdown to match types.ts
+      const payments: PaymentBreakdown = {
+        cash: (amount * 0.4) - (hasMismatch ? 5000 : 0),
+        pos: amount * 0.3,
+        bankTransfer: amount * 0.2,
+        creditSales: amount * 0.1
+      };
+
+      const totalPayments = Object.values(payments).reduce((acc, val) => acc + val, 0);
+      
+      // Fixed ExpenseBreakdown to match types.ts
+      const expenses: ExpenseBreakdown = {
+        generatorDiesel: 25000,
+        generatorHours: 5,
+        gridPowerCost: totalPayments * 0.01,
+        securityLevy: 5000,
+        staffAllowances: 10000
       };
       
-      const totalExpenses = expenses.dieselCost + expenses.posCharges + expenses.operationalExpenses;
+      const totalExpenses = Object.values(expenses).reduce((acc, val) => acc + val, 0);
 
       entries.push({
         id: `e-${station.id}-${dateStr}`,
         date: dateStr,
         stationId: station.id,
         stationName: station.name,
+        fuelType: FuelType.PMS,
         quantitySold,
+        openingMeter: 100000,
+        closingMeter: 100000 + quantitySold,
         rate: FUEL_RATE,
         amount,
-        payments: { cash, pos, transfers, noneSales, airRtt },
+        payments,
         expenses,
         totalPayments,
         totalExpenses,
@@ -60,19 +69,21 @@ const generateRandomData = () => {
         ]
       });
 
-      // Low stock alerts
-      if (station.currentStock < station.lowStockThreshold) {
-        alerts.push({
-          id: `a-low-${station.id}`,
-          type: AlertType.LOW_STOCK,
-          stationId: station.id,
-          stationName: station.name,
-          message: `Station ${station.name} is below threshold: ${station.currentStock.toLocaleString()}L left.`,
-          severity: 'error',
-          timestamp: new Date().toISOString(),
-          resolved: false
-        });
-      }
+      // Fixed low stock alerts by accessing station inventory
+      station.inventory.forEach(inv => {
+        if (inv.currentStock < inv.lowStockThreshold) {
+          alerts.push({
+            id: `a-low-${station.id}-${inv.type}`,
+            type: AlertType.LOW_STOCK,
+            stationId: station.id,
+            stationName: station.name,
+            message: `Station ${station.name} is below threshold: ${inv.currentStock.toLocaleString()}L left of ${inv.type}.`,
+            severity: 'error',
+            timestamp: new Date().toISOString(),
+            resolved: false
+          });
+        }
+      });
 
       // Reconciliation alert
       if (hasMismatch) {

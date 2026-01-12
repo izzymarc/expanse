@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { Station, UserRole, User, StockPurchase } from '../types';
-import { Fuel, MapPin, Plus, Edit2, Trash2, AlertCircle, ShoppingCart, Truck, X, Wand2, Sparkles, Activity } from 'lucide-react';
+import { Station, UserRole, User, StockPurchase, FuelType } from '../types';
+import { Fuel, MapPin, Plus, AlertCircle, ShoppingCart, Truck, X, Wand2, Sparkles, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleGenAI } from "@google/genai";
 
@@ -17,7 +17,7 @@ const StationsPage: React.FC<StationsPageProps> = ({ user, stations, setStations
   const [showProcure, setShowProcure] = useState<Station | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   
-  const [newStation, setNewStation] = useState<Partial<Station>>({
+  const [newStation, setNewStation] = useState({
     name: '',
     location: '',
     capacity: 50000,
@@ -72,15 +72,25 @@ const StationsPage: React.FC<StationsPageProps> = ({ user, stations, setStations
 
   const handleAdd = () => {
     if (!newStation.name || !newStation.location) return;
+    
+    // Fixed: Properly create Station object with inventory array
     const station: Station = {
       id: `s${stations.length + 1}`,
-      name: newStation.name!,
-      location: newStation.location!,
-      capacity: newStation.capacity || 50000,
-      currentStock: newStation.currentStock || 0,
-      lowStockThreshold: newStation.lowStockThreshold || 10000,
-      imageUrl: newStation.imageUrl
+      name: newStation.name,
+      location: newStation.location,
+      inventory: [
+        {
+          type: FuelType.PMS,
+          currentStock: newStation.currentStock,
+          capacity: newStation.capacity,
+          rate: 650,
+          lowStockThreshold: newStation.lowStockThreshold
+        }
+      ],
+      imageUrl: newStation.imageUrl,
+      healthScore: 100
     };
+    
     setStations([...stations, station]);
     setShowAdd(false);
     setNewStation({ name: '', location: '', capacity: 50000, currentStock: 0, lowStockThreshold: 10000, imageUrl: 'https://images.unsplash.com/photo-1554672408-730436b60dde?q=80&w=800&auto=format&fit=crop' });
@@ -124,10 +134,10 @@ const StationsPage: React.FC<StationsPageProps> = ({ user, stations, setStations
 
       <div className="grid gap-10 md:grid-cols-2 xl:grid-cols-3">
         {stations.map((station) => {
-          const stockPercent = (station.currentStock / station.capacity) * 100;
-          const isLow = station.currentStock < station.lowStockThreshold;
-          // Mock health score calculation
-          const healthScore = Math.min(100, Math.max(0, (stockPercent + 20) + (Math.random() * 20 - 10)));
+          const inv = station.inventory[0] || { currentStock: 0, capacity: 1, lowStockThreshold: 0 };
+          const stockPercent = (inv.currentStock / inv.capacity) * 100;
+          const isLow = inv.currentStock < inv.lowStockThreshold;
+          const healthScore = station.healthScore;
 
           return (
             <motion.div 
@@ -178,7 +188,7 @@ const StationsPage: React.FC<StationsPageProps> = ({ user, stations, setStations
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-2">Live Inventory</p>
                       <div className="flex items-baseline gap-2">
                         <span className={`text-4xl font-black tracking-tighter ${isLow ? 'text-rose-600' : 'text-slate-900'}`}>
-                          {station.currentStock.toLocaleString()}
+                          {inv.currentStock.toLocaleString()}
                         </span>
                         <span className="text-xs font-black text-slate-400 uppercase">Litres</span>
                       </div>
@@ -202,7 +212,7 @@ const StationsPage: React.FC<StationsPageProps> = ({ user, stations, setStations
                     </div>
                     <div className="flex justify-between mt-3">
                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">0% Empty</span>
-                       <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{station.capacity.toLocaleString()}L Capacity</span>
+                       <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{inv.capacity.toLocaleString()}L Capacity</span>
                     </div>
                   </div>
                 </div>
@@ -279,13 +289,13 @@ const StationsPage: React.FC<StationsPageProps> = ({ user, stations, setStations
                    <div className="h-4 w-full bg-blue-100 rounded-full overflow-hidden">
                       <motion.div 
                         initial={false}
-                        animate={{ width: `${Math.min(100, ((showProcure.currentStock + procurement.quantity) / showProcure.capacity) * 100)}%` }}
+                        animate={{ width: `${Math.min(100, ((showProcure.inventory[0].currentStock + procurement.quantity) / showProcure.inventory[0].capacity) * 100)}%` }}
                         className="h-full bg-blue-600 rounded-full"
                       />
                    </div>
                    <div className="flex justify-between mt-3">
-                      <span className="text-[10px] font-bold text-blue-600">Current: {Math.round((showProcure.currentStock/showProcure.capacity)*100)}%</span>
-                      <span className="text-[10px] font-bold text-blue-900">After Order: {Math.min(100, Math.round(((showProcure.currentStock+procurement.quantity)/showProcure.capacity)*100))}%</span>
+                      <span className="text-[10px] font-bold text-blue-600">Current: {Math.round((showProcure.inventory[0].currentStock/showProcure.inventory[0].capacity)*100)}%</span>
+                      <span className="text-[10px] font-bold text-blue-900">After Order: {Math.min(100, Math.round(((showProcure.inventory[0].currentStock+procurement.quantity)/showProcure.inventory[0].capacity)*100))}%</span>
                    </div>
                 </div>
               </div>
@@ -349,7 +359,7 @@ const StationsPage: React.FC<StationsPageProps> = ({ user, stations, setStations
                         type="number" 
                         className="w-full rounded-[1.5rem] border-slate-100 bg-slate-50 p-5 font-bold"
                         value={newStation.capacity}
-                        onChange={e => setNewStation({...newStation, capacity: parseInt(e.target.value)})}
+                        onChange={e => setNewStation({...newStation, capacity: parseInt(e.target.value) || 0})}
                       />
                     </div>
                     <div className="space-y-2">
@@ -358,7 +368,7 @@ const StationsPage: React.FC<StationsPageProps> = ({ user, stations, setStations
                         type="number" 
                         className="w-full rounded-[1.5rem] border-slate-100 bg-slate-50 p-5 font-bold"
                         value={newStation.lowStockThreshold}
-                        onChange={e => setNewStation({...newStation, lowStockThreshold: parseInt(e.target.value)})}
+                        onChange={e => setNewStation({...newStation, lowStockThreshold: parseInt(e.target.value) || 0})}
                       />
                     </div>
                   </div>

@@ -11,31 +11,45 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  stationId?: string; // Only for Station Managers
+  stationId?: string;
+}
+
+export enum FuelType {
+  PMS = 'PMS', // Premium Motor Spirit (Petrol)
+  AGO = 'AGO', // Automotive Gas Oil (Diesel)
+  DPK = 'DPK'  // Dual Purpose Kerosene
+}
+
+export interface FuelInventory {
+  type: FuelType;
+  currentStock: number;
+  capacity: number;
+  rate: number;
+  lowStockThreshold: number;
 }
 
 export interface Station {
   id: string;
   name: string;
   location: string;
-  currentStock: number;
-  capacity: number;
-  lowStockThreshold: number;
+  inventory: FuelInventory[];
   imageUrl?: string;
+  healthScore: number;
 }
 
 export interface PaymentBreakdown {
   cash: number;
   pos: number;
-  transfers: number;
-  noneSales: number;
-  airRtt: number;
+  bankTransfer: number;
+  creditSales: number;
 }
 
 export interface ExpenseBreakdown {
-  dieselCost: number;
-  posCharges: number;
-  operationalExpenses: number;
+  generatorDiesel: number; // Diesel consumed by the station's own gen
+  generatorHours: number;
+  gridPowerCost: number;
+  securityLevy: number;
+  staffAllowances: number;
 }
 
 export enum EntryStatus {
@@ -57,7 +71,10 @@ export interface DailyEntry {
   date: string;
   stationId: string;
   stationName: string;
+  fuelType: FuelType;
   quantitySold: number;
+  openingMeter: number;
+  closingMeter: number;
   rate: number;
   amount: number;
   payments: PaymentBreakdown;
@@ -69,13 +86,13 @@ export interface DailyEntry {
   reconciliationDelta: number;
   auditTrail: AuditLog[];
   approverComments?: string;
-  aiInsights?: string;
 }
 
 export enum AlertType {
   LOW_STOCK = 'LOW_STOCK',
   MISMATCH = 'MISMATCH',
-  UNUSUAL_TRANSACTION = 'UNUSUAL_TRANSACTION'
+  UNUSUAL_EXPENSE = 'UNUSUAL_EXPENSE',
+  TRUCK_ARRIVAL = 'TRUCK_ARRIVAL'
 }
 
 export interface Alert {
@@ -89,6 +106,18 @@ export interface Alert {
   resolved: boolean;
 }
 
+export interface TruckArrival {
+  id: string;
+  stationId: string;
+  date: string;
+  truckPlate: string;
+  waybillNumber: string;
+  productType: FuelType;
+  quantity: number;
+  depotSource: string;
+}
+
+// Added missing StockPurchase interface
 export interface StockPurchase {
   id: string;
   stationId: string;
